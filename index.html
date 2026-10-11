@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎨 AI画像プロンプトジェネレーター</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg-main: #0f0f1e;
+    --bg-card: #1a1a2e;
+    --bg-input: #252540;
+    --bg-hover: #2d2d4a;
+    --accent: #8b5cf6;
+    --accent-hover: #7c3aed;
+    --accent-light: #a78bfa;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-tertiary: #64748b;
+    --border: #334155;
+    --border-focus: #8b5cf6;
+    --success: #10b981;
+    --gradient: linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%);
+  }
+  body {
+    font-family: -apple-system, 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+    background: var(--bg-main);
+    background-image:
+      radial-gradient(at 20% 10%, rgba(139,92,246,0.15) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(236,72,153,0.1) 0px, transparent 50%);
+    background-attachment: fixed;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 20px;
+    line-height: 1.6;
+  }
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .header {
+    text-align: center;
+    padding: 40px 20px 32px;
+  }
+  .header h1 {
+    font-size: 36px;
+    font-weight: 800;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 12px;
+    letter-spacing: -0.5px;
+  }
+  .header p {
+    color: var(--text-secondary);
+    font-size: 15px;
+  }
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+  }
+  .section { margin-bottom: 24px; }
+  .section:last-child { margin-bottom: 0; }
+  .label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+  }
+  .label-icon { font-size: 18px; }
+  .label-required {
+    color: #ef4444;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  textarea {
+    width: 100%;
+    min-height: 90px;
+    padding: 14px 16px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  textarea:focus {
+    border-color: var(--border-focus);
+    box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+  }
+  textarea::placeholder { color: var(--text-tertiary); }
+  .button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .btn {
+    min-height: 44px;
+    padding: 10px 18px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    flex: 1 1 auto;
+    min-width: fit-content;
+  }
+  .btn:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-light);
+    transform: translateY(-1px);
+  }
+  .btn.active {
+    background: var(--gradient);
+    border-color: transparent;
+    color: white;
+    box-shadow: 0 4px 12px rgba(139,92,246,0.3);
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 600px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    .header h1 { font-size: 28px; }
+    .card { padding: 20px; }
+  }
+  .generate-btn {
+    width: 100%;
+    min-height: 56px;
+    padding: 16px;
+    background: var(--gradient);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    box-shadow: 0 4px 20px rgba(139,92,246,0.4);
+  }
+  .generate-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 28px rgba(139,92,246,0.5);
+  }
+  .generate-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  .results { margin-top: 32px; }
+  .result-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    animation: fadeIn 0.5s ease;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .result-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .result-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .result-badge {
+    padding: 4px 10px;
+    background: rgba(139,92,246,0.2);
+    border: 1px solid rgba(139,92,246,0.4);
+    border-radius: 6px;
+    font-size: 12px;
+    color: var(--accent-light);
+    font-weight: 500;
+  }
+  .prompt-box {
+    position: relative;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    padding-right: 50px;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    color: #e2e8f0;
+    word-break: break-word;
+    margin-bottom: 12px;
+  }
+  .copy-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 6px 12px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .copy-btn:hover { background: var(--accent-hover); }
+  .copy-btn.copied { background: var(--success); }
+  .result-desc {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 10px 12px;
+    background: var(--bg-input);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border-left: 3px solid var(--accent);
+  }
+  .result-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 12px;
+    color: var(--text-tertiary);
+  }
+  .result-meta strong { color: var(--text-secondary); }
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-tertiary);
+    font-size: 14px;
+  }
+  .footer {
+    text-align: center;
+    padding: 24px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+  }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: var(--success);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(16,185,129,0.4);
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>🎨 AI画像プロンプトジェネレーター</h1>
+    <p>ボタンで選択するだけで、Midjourney / DALL-E / Stable Diffusion用の高品質な英語プロンプトを自動生成</p>
+  </div>
+
+  <div class="card">
+
+    <div class="section">
+      <label class="label">
+        <span class="label-icon">💡</span>
+        イメージの内容・目的
+        <span class="label-required">* 必須</span>
+      </label>
+      <textarea id="idea" placeholder="例: カフェでくつろぐモデル、サイバーパンク都市の夜景、製品広告の香水瓶..."></textarea>
+    </div>
+
+    <div class="grid-2">
+      <div class="section">
+        <label class="label"><span class="label-icon">🌏</span>国籍</label>
+        <div class="button-group" data-group="nationality">
+          <button class="btn" data-value="Japanese">日本人</button>
+          <button class="btn" data-value="Western">外国人</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <label class="label"><span class="label-icon">👤</span>性別</label>
+        <div class="button-group" data-group="gender">
+          <button class="btn" data-value="man">男性</button>
+          <button class="btn" data-value="woman">女性</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="label"><span class="label-icon">🎂</span>年齢層</label>
+      <div class="button-group" data-group="age">
+        <button class="btn" data-value="child">子供</button>
+        <button class="btn" data-value="teenager">10代</button>
+        <button class="btn" data-value="20s">20代</button>
+        <button class="btn" data-value="30s">30代</button>
+        <button class="btn" data-value="40s">40代</button>
+        <button class="btn" data-value="50plus">50代以上</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <label class="label"><span class="label-icon">📐</span>アスペクト比</label>
+      <div class="button-group" data-group="ratio">
+        <button class="btn" data-value="1:1">1:1</button>
+        <button class="btn" data-value="16:9">16:9</button>
+        <button class="btn" data-value="9:16">9:16</button>
+        <button class="btn" data-value="4:3">4:3</button>
+        <button class="btn" data-value="3:4">3:4</button>
+      </div>
+    </div>
+
+    <button class="generate-btn" id="generate-btn">✨ プロンプトを生成する</button>
+
+  </div>
+
+  <div class="results" id="results">
+    <div class="card empty-state">
+      上のフォームを入力して「プロンプトを生成する」ボタンを押してください 🚀
+    </div>
+  </div>
+
+  <div class="footer">
+    Made with 💜 for AI image creators | Powered by Genspark
+  </div>
+
+</div>
+
+<div class="toast" id="toast">✅ コピーしました!</div>
+
+<script>
+const selections = {
+  nationality: null,
+  gender: null,
+  age: null,
+  ratio: null
+};
+
+// Button selection logic
+document.querySelectorAll('.button-group').forEach(group => {
+  const groupName = group.dataset.group;
+  group.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Toggle: if already active, deselect
+      if (btn.classList.contains('active')) {
+        btn.classList.remove('active');
+        selections[groupName] = null;
+      } else {
+        group.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selections[groupName] = btn.dataset.value;
+      }
+    });
+  });
+});
+
+// Age mapping to English
+const ageMap = {
+  'child': 'a child',
+  'teenager': 'a teenage',
+  '20s': 'in their 20s',
+  '30s': 'in their 30s',
+  '40s': 'middle-aged in their 40s',
+  '50plus': 'mature, in their 50s or older'
+};
+
+const ageJP = {
+  'child': '子供', 'teenager': '10代', '20s': '20代',
+  '30s': '30代', '40s': '40代', '50plus': '50代以上'
+};
+
+const nationalityMap = {
+  'Japanese': { en: 'Japanese', jp: '日本人' },
+  'Western': { en: 'Caucasian Western', jp: '外国人' }
+};
+
+const genderMap = {
+  'man': { en: 'man', jp: '男性' },
+  'woman': { en: 'woman', jp: '女性' }
+};
+
+// Build subject descriptor
+function buildSubject() {
+  const parts = [];
+  const nat = selections.nationality;
+  const gen = selections.gender;
+  const age = selections.age;
+
+  if (!nat && !gen && !age) return '';
+
+  if (age === 'child') {
+    parts.push('a');
+    if (nat) parts.push(nationalityMap[nat].en);
+    if (gen === 'man') parts.push('boy');
+    else if (gen === 'woman') parts.push('girl');
+    else parts.push('child');
+  } else if (age === 'teenager') {
+    parts.push('a teenage');
+    if (nat) parts.push(nationalityMap[nat].en);
+    if (gen) parts.push(genderMap[gen].en);
+    else parts.push('person');
+  } else {
+    parts.push('a');
+    if (nat) parts.push(nationalityMap[nat].en);
+    if (gen) parts.push(genderMap[gen].en);
+    else parts.push('person');
+    if (age) parts.push(ageMap[age]);
+  }
+
+  return parts.join(' ');
+}
+
+// Prompt generation templates
+function generatePrompts(idea) {
+  const subject = buildSubject();
+  const ratio = selections.ratio;
+  const hasHuman = subject !== '';
+  const subjectPhrase = hasHuman ? `${subject}, ${idea}` : idea;
+
+  const prompts = [
+    {
+      type: 'realistic',
+      title: '📸 リアル/写真風バージョン',
+      badge: 'Photorealistic',
+      prompt: buildRealisticPrompt(subjectPhrase, hasHuman),
+      desc: '自然光とプロフェッショナルなカメラ設定で、写真のようにリアルな仕上がり。広告やポートレートに最適。',
+      model: 'Midjourney v6 / Nano Banana',
+      params: ratio ? `--ar ${ratio} --v 6 --style raw` : '--v 6 --style raw',
+      negative: hasHuman ? 'cartoon, anime, illustration, painting, deformed, blurry, low quality' : 'cartoon, illustration, deformed, blurry, low quality'
+    },
+    {
+      type: 'artistic',
+      title: '🎨 アート/イラストバージョン',
+      badge: 'Illustration',
+      prompt: buildArtisticPrompt(subjectPhrase, hasHuman),
+      desc: 'アニメ・イラスト調で、Studio Ghibliやアニメ作家の雰囲気を参考に。SNSやキャラクター制作向け。',
+      model: 'Stable Diffusion XL / Nano Banana',
+      params: ratio ? `--ar ${ratio} --niji 6 --style scenic` : '--niji 6 --style scenic',
+      negative: 'photorealistic, 3D render, blurry, bad anatomy, low quality, extra limbs'
+    },
+    {
+      type: 'cinematic',
+      title: '✨ シネマティック/クリエイティブバージョン',
+      badge: 'Cinematic',
+      prompt: buildCinematicPrompt(subjectPhrase, hasHuman),
+      desc: '映画のワンシーンのような劇的な構図と光。ポスターやアート作品、感情的なシーンに。',
+      model: 'Midjourney v6 / Flux Pro',
+      params: ratio ? `--ar ${ratio} --v 6 --style cinematic --s 750` : '--v 6 --style cinematic --s 750',
+      negative: 'flat lighting, oversaturated, cartoon, low contrast, amateur'
+    }
+  ];
+
+  return prompts;
+}
+
+function buildRealisticPrompt(subject, hasHuman) {
+  const base = `Professional photograph of ${subject}`;
+  const style = hasHuman
+    ? ', natural soft lighting, golden hour, shallow depth of field, bokeh background'
+    : ', dramatic lighting, high detail, vivid colors';
+  const camera = ', shot on Sony A7R IV, 85mm f/1.4 lens, award-winning composition';
+  const quality = ', ultra realistic, 8K resolution, highly detailed, masterpiece, photorealistic';
+  return base + style + camera + quality;
+}
+
+function buildArtisticPrompt(subject, hasHuman) {
+  const base = `Anime illustration of ${subject}`;
+  const style = ', Studio Ghibli inspired, Makoto Shinkai style, soft pastel colors, vibrant atmosphere';
+  const detail = ', detailed background, dynamic composition, expressive, hand-drawn aesthetic';
+  const quality = ', trending on ArtStation, highly detailed, masterpiece, best quality, intricate details';
+  return base + style + detail + quality;
+}
+
+function buildCinematicPrompt(subject, hasHuman) {
+  const base = `Cinematic shot of ${subject}`;
+  const style = ', dramatic chiaroscuro lighting, moody atmosphere, film grain, teal and orange color grading';
+  const camera = ', wide-angle anamorphic lens, shallow depth of field, rule of thirds composition';
+  const quality = ', shot on ARRI Alexa, blockbuster movie still, epic, award-winning cinematography, 8K';
+  return base + style + camera + quality;
+}
+
+// Render results
+function renderResults(prompts) {
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = prompts.map((p, i) => `
+    <div class="result-card" style="animation-delay: ${i * 0.1}s">
+      <div class="result-header">
+        <div class="result-title">${p.title}</div>
+        <div class="result-badge">${p.badge}</div>
+      </div>
+      <div class="prompt-box">
+        ${escapeHtml(p.prompt)}
+        <button class="copy-btn" data-prompt="${encodeURIComponent(p.prompt)}">📋 コピー</button>
+      </div>
+      <div class="result-desc">${p.desc}</div>
+      <div class="result-meta">
+        <div><strong>推奨モデル:</strong> ${p.model}</div>
+        <div><strong>パラメータ:</strong> <code>${p.params}</code></div>
+      </div>
+      ${p.negative ? `<div class="result-meta" style="margin-top:8px"><strong>Negative:</strong> <code style="font-size:11px;color:var(--text-tertiary)">${p.negative}</code></div>` : ''}
+    </div>
+  `).join('');
+
+  // Attach copy handlers
+  resultsEl.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const prompt = decodeURIComponent(btn.dataset.prompt);
+      navigator.clipboard.writeText(prompt).then(() => {
+        btn.textContent = '✅ 完了';
+        btn.classList.add('copied');
+        showToast();
+        setTimeout(() => {
+          btn.textContent = '📋 コピー';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    });
+  });
+
+  // Scroll to results
+  setTimeout(() => {
+    resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function showToast() {
+  const toast = document.getElementById('toast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+// Generate button
+document.getElementById('generate-btn').addEventListener('click', () => {
+  const idea = document.getElementById('idea').value.trim();
+  if (!idea) {
+    const textarea = document.getElementById('idea');
+    textarea.style.borderColor = '#ef4444';
+    textarea.focus();
+    setTimeout(() => { textarea.style.borderColor = ''; }, 2000);
+    return;
+  }
+
+  const prompts = generatePrompts(idea);
+  renderResults(prompts);
+});
+
+// Enter key submission
+document.getElementById('idea').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    document.getElementById('generate-btn').click();
+  }
+});
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4bc70e2c01a94c73b74392e4234840661791215815920" integrity="sha512-L0ha0OXavK/8okipN9F8BtP84dg9DUhPERbBXzwI6dgTA55d2+yweo3pn5CSFYs45/r8md2+xvUPtTdvTNRfjA==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
